@@ -116,10 +116,42 @@ defmodule ExDbos.Compat.V2_11 do
           )
 
         if start_step > 1 do
-          :ok = copy_operation_outputs(client, op_outputs_table, forked_workflow_id, original_workflow_id, start_step)
-          :ok = copy_events_history(client, events_hist_table, forked_workflow_id, original_workflow_id, start_step)
-          :ok = copy_latest_events(client, events_hist_table, events_table, forked_workflow_id, original_workflow_id, start_step)
-          :ok = copy_streams(client, streams_table, forked_workflow_id, original_workflow_id, start_step)
+          :ok =
+            copy_operation_outputs(
+              client,
+              op_outputs_table,
+              forked_workflow_id,
+              original_workflow_id,
+              start_step
+            )
+
+          :ok =
+            copy_events_history(
+              client,
+              events_hist_table,
+              forked_workflow_id,
+              original_workflow_id,
+              start_step
+            )
+
+          :ok =
+            copy_latest_events(
+              client,
+              events_hist_table,
+              events_table,
+              forked_workflow_id,
+              original_workflow_id,
+              start_step
+            )
+
+          :ok =
+            copy_streams(
+              client,
+              streams_table,
+              forked_workflow_id,
+              original_workflow_id,
+              start_step
+            )
         end
 
         {:ok, %{"ok" => true, "workflow_id" => forked_workflow_id}}
@@ -135,7 +167,9 @@ defmodule ExDbos.Compat.V2_11 do
   end
 
   defp fetch_status(client, status_table, workflow_id) do
-    case SQL.query(client.repo, "SELECT status FROM #{status_table} WHERE workflow_uuid = $1", [workflow_id]) do
+    case SQL.query(client.repo, "SELECT status FROM #{status_table} WHERE workflow_uuid = $1", [
+           workflow_id
+         ]) do
       {:ok, %{rows: []}} ->
         {:ok, nil}
 
@@ -164,7 +198,19 @@ defmodule ExDbos.Compat.V2_11 do
 
       {:ok,
        %{
-         rows: [[name, class_name, config_name, current_app_version, app_id, auth_user, auth_roles, assumed_role, inputs]]
+         rows: [
+           [
+             name,
+             class_name,
+             config_name,
+             current_app_version,
+             app_id,
+             auth_user,
+             auth_roles,
+             assumed_role,
+             inputs
+           ]
+         ]
        }} ->
         {:ok,
          %{
@@ -192,7 +238,8 @@ defmodule ExDbos.Compat.V2_11 do
          source,
          application_version
        ) do
-    app_version = if is_nil(application_version), do: source["application_version"], else: application_version
+    app_version =
+      if is_nil(application_version), do: source["application_version"], else: application_version
 
     sql = """
     INSERT INTO #{status_table} (
@@ -216,8 +263,11 @@ defmodule ExDbos.Compat.V2_11 do
            source["inputs"],
            original_workflow_id
          ]) do
-      {:ok, _} -> :ok
-      {:error, reason} -> raise RuntimeError, message: "failed to insert forked workflow: #{inspect(reason)}"
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        raise RuntimeError, message: "failed to insert forked workflow: #{inspect(reason)}"
     end
   end
 
@@ -234,8 +284,11 @@ defmodule ExDbos.Compat.V2_11 do
     """
 
     case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
-      {:ok, _} -> :ok
-      {:error, reason} -> raise RuntimeError, message: "failed to copy operation outputs: #{inspect(reason)}"
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        raise RuntimeError, message: "failed to copy operation outputs: #{inspect(reason)}"
     end
   end
 
@@ -248,8 +301,11 @@ defmodule ExDbos.Compat.V2_11 do
     """
 
     case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
-      {:ok, _} -> :ok
-      {:error, reason} -> raise RuntimeError, message: "failed to copy events history: #{inspect(reason)}"
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        raise RuntimeError, message: "failed to copy events history: #{inspect(reason)}"
     end
   end
 
@@ -269,8 +325,11 @@ defmodule ExDbos.Compat.V2_11 do
     """
 
     case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
-      {:ok, _} -> :ok
-      {:error, reason} -> raise RuntimeError, message: "failed to copy latest events: #{inspect(reason)}"
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        raise RuntimeError, message: "failed to copy latest events: #{inspect(reason)}"
     end
   end
 
@@ -283,8 +342,11 @@ defmodule ExDbos.Compat.V2_11 do
     """
 
     case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
-      {:ok, _} -> :ok
-      {:error, reason} -> raise RuntimeError, message: "failed to copy streams: #{inspect(reason)}"
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        raise RuntimeError, message: "failed to copy streams: #{inspect(reason)}"
     end
   end
 

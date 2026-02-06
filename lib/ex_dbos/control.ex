@@ -33,7 +33,9 @@ defmodule ExDbos.Control do
 
   @spec fork_workflow(Client.t(), String.t(), map(), String.t(), keyword()) :: control_result
   def fork_workflow(client, workflow_id, params, request_key, opts \\ []) when is_map(params) do
-    start_step = normalize_start_step(Map.get(params, "start_step", Map.get(params, :start_step, 0)))
+    start_step =
+      normalize_start_step(Map.get(params, "start_step", Map.get(params, :start_step, 0)))
+
     normalized = normalize_fork_params(params)
 
     Idempotency.with_idempotency(client, "fork", workflow_id, request_key, opts, fn ->
@@ -55,8 +57,10 @@ defmodule ExDbos.Control do
 
   defp normalize_fork_params(params) do
     %{
-      "new_workflow_id" => Map.get(params, "new_workflow_id") || Map.get(params, :new_workflow_id),
-      "application_version" => Map.get(params, "application_version") || Map.get(params, :application_version)
+      "new_workflow_id" =>
+        Map.get(params, "new_workflow_id") || Map.get(params, :new_workflow_id),
+      "application_version" =>
+        Map.get(params, "application_version") || Map.get(params, :application_version)
     }
     |> Enum.reject(fn {_k, v} -> is_nil(v) end)
     |> Map.new()
@@ -66,7 +70,9 @@ defmodule ExDbos.Control do
   defp normalize_result({:ok, payload}), do: {:ok, %{"result" => payload}}
   defp normalize_result({:error, reason}), do: {:error, normalize_error(reason)}
 
-  defp normalize_error(%{postgres: _} = error), do: %{status: 500, body: %{"error" => inspect(error)}}
+  defp normalize_error(%{postgres: _} = error),
+    do: %{status: 500, body: %{"error" => inspect(error)}}
+
   defp normalize_error(%{status: _status, body: _body} = error), do: error
   defp normalize_error(reason), do: %{status: 500, body: %{"error" => inspect(reason)}}
 end

@@ -15,7 +15,12 @@ defmodule Mix.Tasks.ExDbos.Install do
       )
 
     source_file =
-      Path.join([:code.priv_dir(:ex_dbos), "templates", "migrations", "create_control_api_idempotency.exs"])
+      Path.join([
+        :code.priv_dir(:ex_dbos),
+        "templates",
+        "migrations",
+        "create_control_api_idempotency.exs"
+      ])
 
     if migration_exists?(migrations_dir) do
       Mix.shell().info("control_api_idempotency migration already exists, skipping.")
