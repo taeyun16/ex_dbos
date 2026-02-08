@@ -8,6 +8,7 @@ defmodule ExDbos.MixProject do
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      aliases: aliases(),
       package: package(),
       description: description(),
       docs: docs()
@@ -26,7 +27,14 @@ defmodule ExDbos.MixProject do
     [
       {:ecto_sql, "~> 3.13"},
       {:jason, "~> 1.4"},
-      {:postgrex, ">= 0.0.0"}
+      {:postgrex, ">= 0.0.0"},
+      {:styler, "~> 1.10", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      style: ["format"]
     ]
   end
 
