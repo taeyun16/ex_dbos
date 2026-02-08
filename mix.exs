@@ -52,6 +52,7 @@ defmodule ExDbos.MixProject do
         "credo --strict --ignore Credo.Check.Refactor.Nesting,Credo.Check.Refactor.CyclomaticComplexity,Credo.Check.Readability.ModuleNames",
         "deps.audit"
       ],
+      "docs.check": ["test test/documentation_consistency_test.exs"],
       coverage: ["test --cover"],
       "test.integration": ["test --include integration"]
     ]
@@ -61,6 +62,7 @@ defmodule ExDbos.MixProject do
     [
       quality: :test,
       style: :dev,
+      "docs.check": :test,
       coverage: :test,
       "test.integration": :test,
       coveralls: :test,

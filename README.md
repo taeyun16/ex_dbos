@@ -3,6 +3,7 @@
 DBOS control operations for Elixir, with built-in idempotency semantics for mutation endpoints.
 
 [![GitHub Stars](https://img.shields.io/github/stars/taeyun16/ex_dbos?style=flat-square)](https://github.com/taeyun16/ex_dbos/stargazers)
+[![CI](https://github.com/taeyun16/ex_dbos/actions/workflows/ci.yml/badge.svg)](https://github.com/taeyun16/ex_dbos/actions/workflows/ci.yml)
 [![GitHub Forks](https://img.shields.io/github/forks/taeyun16/ex_dbos?style=flat-square)](https://github.com/taeyun16/ex_dbos/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/taeyun16/ex_dbos?style=flat-square)](https://github.com/taeyun16/ex_dbos/issues)
 [![Top Language](https://img.shields.io/github/languages/top/taeyun16/ex_dbos?style=flat-square)](https://github.com/taeyun16/ex_dbos)
@@ -221,6 +222,10 @@ Useful options:
 - Control API details: [`docs/control-api.md`](docs/control-api.md)
 - Idempotency details: [`docs/idempotency.md`](docs/idempotency.md)
 - Troubleshooting: [`docs/troubleshooting.md`](docs/troubleshooting.md)
+
+## Contributing
+
+- Contribution guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 ## License
 

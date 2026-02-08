@@ -23,3 +23,4 @@ Documentation for using `ex_dbos` as a DBOS control SDK in Elixir.
 ## Project Home
 
 - [README](../README.md)
+- [Contributing](../CONTRIBUTING.md)
