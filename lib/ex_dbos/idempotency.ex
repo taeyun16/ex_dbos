@@ -3,17 +3,15 @@ defmodule ExDbos.Idempotency do
   Idempotency reservation/replay behavior for mutation endpoints.
   """
 
-  alias Ecto.Adapters.SQL
-  alias ExDbos.{Client, Schema.Idempotency}
+  alias ExDbos.Client
+  alias ExDbos.Schema.Idempotency
 
   @default_ttl_days 7
   @default_cleanup_interval_seconds 300
   @cleanup_table :ex_dbos_cleanup_state
 
-  @spec with_idempotency(Client.t(), String.t(), String.t(), String.t(), keyword(), (-> {:ok,
-                                                                                         map()}
-                                                                                        | {:error,
-                                                                                           term()})) ::
+  @spec with_idempotency(Client.t(), String.t(), String.t(), String.t(), keyword(), (-> {:ok, map()}
+                                                                                        | {:error, term()})) ::
           {:ok, map()} | {:error, term()}
   def with_idempotency(client, action, workflow_id, request_key, opts, operation) do
     with :ok <- validate_request_key(request_key),
@@ -59,7 +57,7 @@ defmodule ExDbos.Idempotency do
     WHERE updated_at < NOW() - make_interval(days => $1)
     """
 
-    case SQL.query(client.repo, sql, [ttl_days]) do
+    case sql_module(client).query(client.repo, sql, [ttl_days]) do
       {:ok, _} -> :ok
       {:error, reason} -> {:error, reason}
     end
@@ -68,14 +66,18 @@ defmodule ExDbos.Idempotency do
   defp validate_request_key(key) when not is_binary(key),
     do: {:error, %{status: 400, body: %{"error" => "Invalid idempotency key"}}}
 
-  defp validate_request_key(""),
-    do: {:error, %{status: 400, body: %{"error" => "Idempotency key must not be empty"}}}
-
   defp validate_request_key(key) do
-    if byte_size(String.trim(key)) > 200 do
-      {:error, %{status: 400, body: %{"error" => "Idempotency key is too long (max 200 chars)"}}}
-    else
-      :ok
+    trimmed = String.trim(key)
+
+    cond do
+      trimmed == "" ->
+        {:error, %{status: 400, body: %{"error" => "Idempotency key must not be empty"}}}
+
+      byte_size(trimmed) > 200 ->
+        {:error, %{status: 400, body: %{"error" => "Idempotency key is too long (max 200 chars)"}}}
+
+      true ->
+        :ok
     end
   end
 
@@ -100,18 +102,16 @@ defmodule ExDbos.Idempotency do
     ON #{table} (action, workflow_id)
     """
 
-    with {:ok, _} <- SQL.query(client.repo, create_table_sql, []),
-         {:ok, _} <- SQL.query(client.repo, create_index_sql, []) do
+    with {:ok, _} <- sql_module(client).query(client.repo, create_table_sql, []),
+         {:ok, _} <- sql_module(client).query(client.repo, create_index_sql, []) do
       :ok
-    else
-      {:error, reason} -> {:error, reason}
     end
   end
 
   defp reserve_or_replay(client, action, workflow_id, request_key) do
     table = Idempotency.table(client)
 
-    client.repo.transaction(fn ->
+    fn ->
       insert_sql = """
       INSERT INTO #{table} (request_key, action, workflow_id, status, created_at, updated_at)
       VALUES ($1, $2, $3, 'in_progress', NOW(), NOW())
@@ -119,7 +119,7 @@ defmodule ExDbos.Idempotency do
       RETURNING request_key
       """
 
-      case SQL.query(client.repo, insert_sql, [request_key, action, workflow_id]) do
+      case sql_module(client).query(client.repo, insert_sql, [request_key, action, workflow_id]) do
         {:ok, %{rows: [[_]]}} ->
           {:ok, :new}
 
@@ -130,17 +130,15 @@ defmodule ExDbos.Idempotency do
           WHERE request_key = $1
           """
 
-          case SQL.query(client.repo, fetch_sql, [request_key]) do
-            {:ok,
-             %{rows: [[stored_action, stored_workflow_id, status, response_json, error_message]]}} ->
+          case sql_module(client).query(client.repo, fetch_sql, [request_key]) do
+            {:ok, %{rows: [[stored_action, stored_workflow_id, status, response_json, error_message]]}} ->
               cond do
                 stored_action != action or stored_workflow_id != workflow_id ->
                   {:error,
                    %{
                      status: 409,
                      body: %{
-                       "error" =>
-                         "Idempotency key was already used for a different action/workflow"
+                       "error" => "Idempotency key was already used for a different action/workflow"
                      }
                    }}
 
@@ -152,8 +150,7 @@ defmodule ExDbos.Idempotency do
                    %{
                      status: 409,
                      body: %{
-                       "error" =>
-                         "Previous request with this idempotency key failed: #{error_message || "unknown error"}"
+                       "error" => "Previous request with this idempotency key failed: #{error_message || "unknown error"}"
                      }
                    }}
 
@@ -177,7 +174,8 @@ defmodule ExDbos.Idempotency do
         {:error, reason} ->
           {:error, reason}
       end
-    end)
+    end
+    |> client.repo.transaction()
     |> unwrap_tx()
   end
 
@@ -194,7 +192,7 @@ defmodule ExDbos.Idempotency do
     WHERE request_key = $2
     """
 
-    case SQL.query(client.repo, sql, [encoded_payload, request_key]) do
+    case sql_module(client).query(client.repo, sql, [encoded_payload, request_key]) do
       {:ok, _} ->
         :ok
 
@@ -216,7 +214,7 @@ defmodule ExDbos.Idempotency do
 
     message = String.slice(error_message, 0, 4000)
 
-    case SQL.query(client.repo, sql, [message, request_key]) do
+    case sql_module(client).query(client.repo, sql, [message, request_key]) do
       {:ok, _} ->
         :ok
 
@@ -281,4 +279,6 @@ defmodule ExDbos.Idempotency do
   defp unwrap_tx({:ok, {:ok, value}}), do: {:ok, value}
   defp unwrap_tx({:ok, {:error, reason}}), do: {:error, reason}
   defp unwrap_tx({:error, reason}), do: {:error, reason}
+
+  defp sql_module(%Client{sql_module: module}), do: module
 end

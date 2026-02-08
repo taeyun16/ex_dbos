@@ -11,8 +11,13 @@ defmodule ExDbos.MixProject do
       aliases: aliases(),
       package: package(),
       description: description(),
+      test_coverage: test_coverage(),
       docs: docs()
     ]
+  end
+
+  def cli do
+    [preferred_envs: preferred_cli_env()]
   end
 
   # Run "mix help compile.app" to learn about applications.
@@ -28,13 +33,52 @@ defmodule ExDbos.MixProject do
       {:ecto_sql, "~> 3.13"},
       {:jason, "~> 1.4"},
       {:postgrex, ">= 0.0.0"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.18.5", only: :test, runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.10", only: [:dev, :test], runtime: false}
     ]
   end
 
   defp aliases do
     [
-      style: ["format"]
+      style: ["format"],
+      quality: [
+        "format --check-formatted",
+        "compile --warnings-as-errors",
+        "test",
+        "test --cover",
+        "credo --strict --ignore Credo.Check.Refactor.Nesting,Credo.Check.Refactor.CyclomaticComplexity,Credo.Check.Readability.ModuleNames",
+        "deps.audit"
+      ],
+      coverage: ["test --cover"],
+      "test.integration": ["test --include integration"]
+    ]
+  end
+
+  defp preferred_cli_env do
+    [
+      quality: :test,
+      style: :dev,
+      coverage: :test,
+      "test.integration": :test,
+      coveralls: :test,
+      "coveralls.detail": :test,
+      "coveralls.post": :test,
+      "coveralls.html": :test
+    ]
+  end
+
+  defp test_coverage do
+    [
+      output: "cover",
+      summary: [threshold: 80],
+      ignore_modules: [
+        ExDbos.Application,
+        ExDbos.Schema.System,
+        ExDbos.Schema.Idempotency
+      ]
     ]
   end
 
@@ -46,7 +90,7 @@ defmodule ExDbos.MixProject do
     [
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/dbos-inc/ex_dbos"
+        "GitHub" => "https://github.com/taeyun16/ex_dbos"
       }
     ]
   end
@@ -54,7 +98,16 @@ defmodule ExDbos.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "docs/README.md",
+        "docs/bootstrap.md",
+        "docs/quickstart.md",
+        "docs/docker-compose-workflow.md",
+        "docs/control-api.md",
+        "docs/idempotency.md",
+        "docs/troubleshooting.md"
+      ]
     ]
   end
 end

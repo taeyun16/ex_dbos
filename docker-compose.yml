@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ex_dbos_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dbos
+      POSTGRES_DB: dbos_example
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dbos_example"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  dbos-worker:
+    image: node:20-alpine
+    container_name: ex_dbos_worker
+    working_dir: /workspace/examples/dbos-worker
+    environment:
+      DBOS_SYSTEM_DATABASE_URL: postgresql://postgres:dbos@db:5432/dbos_example
+      DBOS_RUN_SAMPLE_WORKFLOW: "1"
+    command: >
+      sh -lc "npm install --no-fund --no-audit && npm run start"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/workspace
+
+  exdbos-check:
+    image: elixir:1.19
+    container_name: ex_dbos_check
+    profiles: ["check"]
+    working_dir: /workspace
+    environment:
+      DBOS_SYSTEM_DATABASE_URL: postgresql://postgres:dbos@db:5432/dbos_example
+      DBOS_SYSTEM_SCHEMA: dbos
+    command: >
+      sh -lc "elixir /workspace/examples/ex_dbos_compose_smoke.exs"
+    depends_on:
+      db:
+        condition: service_healthy
+      dbos-worker:
+        condition: service_started
+    volumes:
+      - ./:/workspace
+
+volumes:
+  db_data:

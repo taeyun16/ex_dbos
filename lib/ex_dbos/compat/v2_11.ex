@@ -3,17 +3,16 @@ defmodule ExDbos.Compat.V2_11 do
   DBOS 2.11.x-compatible control SQL operations.
   """
 
-  alias Ecto.Adapters.SQL
   alias ExDbos.Client
-  alias ExDbos.SQL, as: ExSql
   alias ExDbos.Schema.System
+  alias ExDbos.SQL, as: ExSql
 
   @internal_queue "_dbos_internal_queue"
   @terminal_statuses ["SUCCESS", "ERROR"]
 
   @spec health(Client.t()) :: :ok | {:error, term()}
-  def health(%Client{repo: repo}) do
-    case SQL.query(repo, "SELECT 1", []) do
+  def health(%Client{repo: repo} = client) do
+    case sql_module(client).query(repo, "SELECT 1", []) do
       {:ok, _} -> :ok
       {:error, reason} -> {:error, reason}
     end
@@ -23,7 +22,7 @@ defmodule ExDbos.Compat.V2_11 do
   def cancel_workflow(client, workflow_id) do
     status_table = System.workflow_status_table(client)
 
-    client.repo.transaction(fn ->
+    fn ->
       with {:ok, row} <- fetch_status(client, status_table, workflow_id) do
         if is_nil(row) or row["status"] in @terminal_statuses do
           {:ok, %{"ok" => true}}
@@ -38,13 +37,14 @@ defmodule ExDbos.Compat.V2_11 do
           WHERE workflow_uuid = $1
           """
 
-          case SQL.query(client.repo, sql, [workflow_id]) do
+          case sql_module(client).query(client.repo, sql, [workflow_id]) do
             {:ok, _} -> {:ok, %{"ok" => true}}
             {:error, reason} -> {:error, reason}
           end
         end
       end
-    end)
+    end
+    |> client.repo.transaction()
     |> unwrap_tx()
   end
 
@@ -52,9 +52,9 @@ defmodule ExDbos.Compat.V2_11 do
   def resume_workflow(client, workflow_id) do
     status_table = System.workflow_status_table(client)
 
-    client.repo.transaction(fn ->
+    fn ->
       _ =
-        SQL.query(
+        sql_module(client).query(
           client.repo,
           "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ",
           []
@@ -81,13 +81,14 @@ defmodule ExDbos.Compat.V2_11 do
             WHERE workflow_uuid = $1
             """
 
-            case SQL.query(client.repo, sql, [workflow_id, @internal_queue]) do
+            case sql_module(client).query(client.repo, sql, [workflow_id, @internal_queue]) do
               {:ok, _} -> {:ok, %{"ok" => true}}
               {:error, reason} -> {:error, reason}
             end
         end
       end
-    end)
+    end
+    |> client.repo.transaction()
     |> unwrap_tx()
   end
 
@@ -102,7 +103,7 @@ defmodule ExDbos.Compat.V2_11 do
     forked_workflow_id = Map.get(params, "new_workflow_id") || Ecto.UUID.generate()
     application_version = Map.get(params, "application_version")
 
-    client.repo.transaction(fn ->
+    fn ->
       with {:ok, source} <- fetch_workflow_for_fork(client, status_table, original_workflow_id),
            false <- is_nil(source) do
         :ok =
@@ -162,14 +163,19 @@ defmodule ExDbos.Compat.V2_11 do
         {:error, reason} ->
           {:error, reason}
       end
-    end)
+    end
+    |> client.repo.transaction()
     |> unwrap_tx()
   end
 
   defp fetch_status(client, status_table, workflow_id) do
-    case SQL.query(client.repo, "SELECT status FROM #{status_table} WHERE workflow_uuid = $1", [
-           workflow_id
-         ]) do
+    case sql_module(client).query(
+           client.repo,
+           "SELECT status FROM #{status_table} WHERE workflow_uuid = $1",
+           [
+             workflow_id
+           ]
+         ) do
       {:ok, %{rows: []}} ->
         {:ok, nil}
 
@@ -192,7 +198,7 @@ defmodule ExDbos.Compat.V2_11 do
     WHERE workflow_uuid = $1
     """
 
-    case SQL.query(client.repo, sql, [workflow_id]) do
+    case sql_module(client).query(client.repo, sql, [workflow_id]) do
       {:ok, %{rows: []}} ->
         {:ok, nil}
 
@@ -230,14 +236,7 @@ defmodule ExDbos.Compat.V2_11 do
     end
   end
 
-  defp insert_forked_workflow(
-         client,
-         status_table,
-         forked_workflow_id,
-         original_workflow_id,
-         source,
-         application_version
-       ) do
+  defp insert_forked_workflow(client, status_table, forked_workflow_id, original_workflow_id, source, application_version) do
     app_version =
       if is_nil(application_version), do: source["application_version"], else: application_version
 
@@ -249,7 +248,7 @@ defmodule ExDbos.Compat.V2_11 do
     ) VALUES ($1, 'ENQUEUED', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     """
 
-    case SQL.query(client.repo, sql, [
+    case sql_module(client).query(client.repo, sql, [
            forked_workflow_id,
            source["name"],
            source["class_name"],
@@ -283,7 +282,7 @@ defmodule ExDbos.Compat.V2_11 do
     WHERE workflow_uuid = $2 AND function_id < $3
     """
 
-    case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
+    case sql_module(client).query(client.repo, sql, [forked_id, original_id, start_step]) do
       {:ok, _} ->
         :ok
 
@@ -300,7 +299,7 @@ defmodule ExDbos.Compat.V2_11 do
     WHERE workflow_uuid = $2 AND function_id < $3
     """
 
-    case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
+    case sql_module(client).query(client.repo, sql, [forked_id, original_id, start_step]) do
       {:ok, _} ->
         :ok
 
@@ -324,7 +323,7 @@ defmodule ExDbos.Compat.V2_11 do
       )
     """
 
-    case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
+    case sql_module(client).query(client.repo, sql, [forked_id, original_id, start_step]) do
       {:ok, _} ->
         :ok
 
@@ -341,7 +340,7 @@ defmodule ExDbos.Compat.V2_11 do
     WHERE workflow_uuid = $2 AND function_id < $3
     """
 
-    case SQL.query(client.repo, sql, [forked_id, original_id, start_step]) do
+    case sql_module(client).query(client.repo, sql, [forked_id, original_id, start_step]) do
       {:ok, _} ->
         :ok
 
@@ -353,4 +352,6 @@ defmodule ExDbos.Compat.V2_11 do
   defp unwrap_tx({:ok, {:ok, payload}}), do: {:ok, payload}
   defp unwrap_tx({:ok, {:error, error}}), do: {:error, error}
   defp unwrap_tx({:error, error}), do: {:error, error}
+
+  defp sql_module(%Client{sql_module: module}), do: module
 end

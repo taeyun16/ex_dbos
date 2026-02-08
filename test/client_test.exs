@@ -4,6 +4,7 @@ defmodule ExDbos.ClientTest do
   alias ExDbos.Client
 
   defmodule RepoStub do
+    @moduledoc false
   end
 
   test "builds client with defaults" do
@@ -13,6 +14,9 @@ defmodule ExDbos.ClientTest do
     assert client.system_schema == "dbos"
     assert client.idempotency_schema == "public"
     assert client.idempotency_table == "control_api_idempotency"
+    assert client.compat_module == ExDbos.Compat.V2_11
+    assert client.idempotency_module == ExDbos.Idempotency
+    assert client.sql_module == Ecto.Adapters.SQL
   end
 
   test "builds qualified tables" do

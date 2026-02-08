@@ -13,4 +13,8 @@ defmodule ExDbos.SQLTest do
       SQL.identifier!("dbos;drop", "schema")
     end
   end
+
+  test "provides epoch milliseconds fragment" do
+    assert SQL.now_epoch_ms_fragment() == "(extract(epoch from now()) * 1000)::bigint"
+  end
 end

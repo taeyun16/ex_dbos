@@ -1,0 +1,11 @@
+{
+  "name": "ex-dbos-compose-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node main.mjs"
+  },
+  "dependencies": {
+    "@dbos-inc/dbos-sdk": "latest"
+  }
+}
